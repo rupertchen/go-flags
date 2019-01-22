@@ -175,6 +175,8 @@ func writeManPageCommand(wr io.Writer, name string, root *Command, command *Comm
 
 // WriteManPage writes a basic man page in groff format to the specified
 // writer.
+//
+// TODO: Bug with writing usage for subcommands
 func (p *Parser) WriteManPage(wr io.Writer) {
 	t := time.Now()
 	source_date_epoch := os.Getenv("SOURCE_DATE_EPOCH")
