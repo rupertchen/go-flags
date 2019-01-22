@@ -107,8 +107,8 @@ func writeManPageOptions(wr io.Writer, grp *Group) {
 	})
 }
 
-func writeManPageSubcommands(wr io.Writer, name string, commands []*Command) {
-	subs := commands[len(commands)-1].sortedVisibleCommands()
+func writeManPageSubcommands(wr io.Writer, name string, root *Command) {
+	subs := root.sortedVisibleCommands()
 
 	for _, c := range subs {
 		var nn string
@@ -123,11 +123,11 @@ func writeManPageSubcommands(wr io.Writer, name string, commands []*Command) {
 			nn = c.Name
 		}
 
-		writeManPageCommand(wr, nn, c, commands)
+		writeManPageCommand(wr, nn, root, c)
 	}
 }
 
-func writeManPageCommand(wr io.Writer, name string, command *Command, parents []*Command) {
+func writeManPageCommand(wr io.Writer, name string, root *Command, command *Command) {
 	fmt.Fprintf(wr, ".SS %s\n", name)
 	fmt.Fprintln(wr, command.ShortDescription)
 
@@ -154,25 +154,48 @@ func writeManPageCommand(wr io.Writer, name string, command *Command, parents []
 		usage = fmt.Sprintf("[%s-OPTIONS]", command.Name)
 	}
 
-	var pre strings.Builder
-	for i := 0; i < len(parents); i++ {
-		var p = parents[i]
-		pre.WriteString(p.Name)
-		pre.WriteString(" ")
-		if p.hasHelpOptions() {
-			if i == 0 {
-				pre.WriteString("[OPTIONS] ")
-			} else {
-				pre.WriteString("[")
-				pre.WriteString(p.Name)
-				pre.WriteString("-OPTIONS] ")
-			}
+	// TODO: Start by doing this backwards, just to show we can traverse what we need to
+	var pre2 strings.Builder
+	var r1 = command
+	for {
+		if r2, ok := r1.parent.(*Command); !ok {
+			break
+		} else {
+			r1 = r2
 		}
+
+		pre2.WriteString(r1.Name)
+		pre2.WriteString(" ")
 	}
-	pre.WriteString(command.Name)
+	//if r , ok := command.parent.(*Command); ok {
+	//	for ok {
+	//		pre2.WriteString(r.Name)
+	//		pre2.WriteString(" ")
+	//		r, ok = r.parent.(*Command)
+	//	}
+	//}
+	pre2.WriteString(command.Name)
+
+
+	//var pre strings.Builder
+	//for i := 0; i < len(root); i++ {
+	//	var p = root[i]
+	//	pre.WriteString(p.Name)
+	//	pre.WriteString(" ")
+	//	if p.hasHelpOptions() {
+	//		if i == 0 {
+	//			pre.WriteString("[OPTIONS] ")
+	//		} else {
+	//			pre.WriteString("[")
+	//			pre.WriteString(p.Name)
+	//			pre.WriteString("-OPTIONS] ")
+	//		}
+	//	}
+	//}
+	//pre.WriteString(command.Name)
 
 	if len(usage) > 0 {
-		fmt.Fprintf(wr, "\n\\fBUsage\\fP: %s %s\n.TP\n", manQuote(pre.String()), manQuote(usage))
+		fmt.Fprintf(wr, "\n\\fBUsage\\fP: %s %s\n.TP\n", manQuote(pre2.String()), manQuote(usage))
 	}
 
 	if len(command.Aliases) > 0 {
@@ -180,7 +203,7 @@ func writeManPageCommand(wr io.Writer, name string, command *Command, parents []
 	}
 
 	writeManPageOptions(wr, command.Group)
-	writeManPageSubcommands(wr, name, append(parents, command))
+	writeManPageSubcommands(wr, name, command)
 }
 
 // WriteManPage writes a basic man page in groff format to the specified
@@ -222,6 +245,6 @@ func (p *Parser) WriteManPage(wr io.Writer) {
 	if len(p.visibleCommands()) > 0 {
 		fmt.Fprintln(wr, ".SH COMMANDS")
 
-		writeManPageSubcommands(wr, "", []*Command{p.Command})
+		writeManPageSubcommands(wr, "", p.Command)
 	}
 }
